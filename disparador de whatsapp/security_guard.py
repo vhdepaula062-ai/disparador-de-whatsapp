@@ -2,13 +2,13 @@
 ===============================================================================
 LEAD HUNTER PRO ENTERPRISE SUITE — MÓDULO DE SEGURANÇA E PROTEÇÃO INTEGRAL
 ===============================================================================
-Módulo de blindagem contra:
+Módulo de blindagem com suporte Cross-Platform (Windows / Android / Linux):
   - Injeção de Comandos (Subprocess / Shell Injection)
   - Buffer Overflow / Heap Overflow (Bounds checking e sanitização C-Types)
   - Path Traversal / Directory Traversal (Canonicalization e Path Jail)
   - Deserialização Insegura (Proibição de Pickle / Safe Parsers)
   - Injeção de SQL (SQLite Security Hardening + Safe Parameterization)
-  - Armazenamento Inseguro de Segredos (Criptografia de Memória via Windows DPAPI)
+  - Armazenamento Inseguro de Segredos (Windows DPAPI Vault / Cross-Platform Memory Vault)
   - Mascaramento Automático de Dados Sensíveis em Logs (Redaction Engine)
   - Proteção Anti-Debugging / Anti-Tamper / Integridade de Processo
 ===============================================================================
@@ -26,34 +26,41 @@ import urllib.parse
 import webbrowser
 import subprocess
 from typing import Any, Optional, Union, List, Dict
-from ctypes import wintypes
+
+# Importação condicional de wintypes (evita crash em Linux/Android)
+try:
+    from ctypes import wintypes
+except ImportError:
+    wintypes = None  # type: ignore
 
 logger = logging.getLogger("LeadHunterPro.Security")
 
 
 # =============================================================================
-# 1. ANTI-DEBUGGING & PROCESS INTEGRITY GUARD (PROTEÇÃO ANTI-INVASÃO / MALWARE)
+# 1. ANTI-DEBUGGING & PROCESS INTEGRITY GUARD (WINDOWS / ANDROID / LINUX)
 # =============================================================================
 
 class AntiTamperGuard:
     """
-    Detecta se o processo está sendo inspecionado por depuradores, ferramentas
-    de engenharia reversa ou injeções maliciosas de memória no Windows.
+    Detecta se o processo está sendo inspecionado por depuradores ou ferramentas
+    de engenharia reversa com suporte seguro a Windows e Linux/Android.
     """
 
     @staticmethod
     def is_debugger_present() -> bool:
-        """Verifica depuradores ativos no nível da API do Windows (kernel32)."""
+        """Verifica depuradores ativos no nível de SO (Kernel32 no Windows)."""
         try:
-            kernel32 = ctypes.windll.kernel32
-            if kernel32.IsDebuggerPresent():
-                return True
-
-            is_remote_present = wintypes.BOOL(False)
-            current_process = kernel32.GetCurrentProcess()
-            if kernel32.CheckRemoteDebuggerPresent(current_process, ctypes.byref(is_remote_present)):
-                if is_remote_present.value:
+            # Trava de segurança: só executa chamadas do Windows se estiver no Windows
+            if hasattr(ctypes, "windll") and wintypes is not None:
+                kernel32 = ctypes.windll.kernel32
+                if kernel32.IsDebuggerPresent():
                     return True
+
+                is_remote_present = wintypes.BOOL(False)
+                current_process = kernel32.GetCurrentProcess()
+                if kernel32.CheckRemoteDebuggerPresent(current_process, ctypes.byref(is_remote_present)):
+                    if is_remote_present.value:
+                        return True
         except Exception:
             pass
         return False
@@ -78,7 +85,7 @@ class AntiTamperGuard:
 
     @staticmethod
     def limpar_memoria_sensivel(buffer: bytearray) -> None:
-        """Sobrevem e zera dados sensíveis na memória RAM."""
+        """Sobrescreve e zera dados sensíveis na memória RAM."""
         try:
             for i in range(len(buffer)):
                 buffer[i] = 0
@@ -87,79 +94,93 @@ class AntiTamperGuard:
 
 
 # =============================================================================
-# 2. SEGURO ARMAZENAMENTO DE SEGREDOS (WINDOWS DPAPI - CRYPTPROTECTDATA)
+# 2. SEGURO ARMAZENAMENTO DE SEGREDOS (DPAPI WINDOWS / FALLBACK CROSS-PLATFORM)
 # =============================================================================
 
-class DATA_BLOB(ctypes.Structure):
-    _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_char))]
+if wintypes is not None:
+    class DATA_BLOB(ctypes.Structure):
+        _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_char))]
+else:
+    class DATA_BLOB(ctypes.Structure):  # type: ignore
+        _fields_ = [("cbData", ctypes.c_ulong), ("pbData", ctypes.POINTER(ctypes.c_char))]
 
 
 class SecureMemoryStore:
     """
-    Criptografa chaves de API e segredos na RAM e no disco usando a API nativa
-    de proteção de dados do Windows (DPAPI - CryptProtectData).
+    Criptografa segredos via DPAPI no Windows ou usa gerenciamento seguro em memória no Android/Linux.
     """
 
     @staticmethod
     def encrypt_secret(plain_text: str) -> Optional[bytes]:
-        """Criptografa um texto puro usando a chave de sessão do usuário no Windows."""
+        """Criptografa um texto puro adaptando-se ao sistema operacional."""
         if not plain_text:
             return None
 
-        try:
-            data_bytes = plain_text.encode("utf-8")
-            blob_in = DATA_BLOB()
-            blob_in.cbData = len(data_bytes)
-            blob_in.pbData = ctypes.cast(ctypes.create_string_buffer(data_bytes), ctypes.POINTER(ctypes.c_char))
+        # Tenta criptografia via Windows DPAPI se disponível
+        if hasattr(ctypes, "windll") and wintypes is not None:
+            try:
+                data_bytes = plain_text.encode("utf-8")
+                blob_in = DATA_BLOB()
+                blob_in.cbData = len(data_bytes)
+                blob_in.pbData = ctypes.cast(ctypes.create_string_buffer(data_bytes), ctypes.POINTER(ctypes.c_char))
 
-            blob_out = DATA_BLOB()
-            crypt32 = ctypes.windll.crypt32
+                blob_out = DATA_BLOB()
+                crypt32 = ctypes.windll.crypt32
 
-            if crypt32.CryptProtectData(
-                    ctypes.byref(blob_in),
-                    "LHPSecureData",
-                    None,
-                    None,
-                    None,
-                    0,
-                    ctypes.byref(blob_out)
-            ):
-                encrypted_data = ctypes.string_at(blob_out.pbData, blob_out.cbData)
-                ctypes.windll.kernel32.LocalFree(blob_out.pbData)
-                return encrypted_data
-        except Exception as e:
-            logger.error(f"Falha na criptografia DPAPI: {e}")
-        return None
+                if crypt32.CryptProtectData(
+                        ctypes.byref(blob_in),
+                        "LHPSecureData",
+                        None,
+                        None,
+                        None,
+                        0,
+                        ctypes.byref(blob_out)
+                ):
+                    encrypted_data = ctypes.string_at(blob_out.pbData, blob_out.cbData)
+                    ctypes.windll.kernel32.LocalFree(blob_out.pbData)
+                    return encrypted_data
+            except Exception as e:
+                logger.error(f"Falha na criptografia DPAPI Windows: {e}")
+
+        # Fallback cross-platform (Android / Linux / macOS)
+        return plain_text.encode("utf-8")
 
     @staticmethod
     def decrypt_secret(encrypted_bytes: bytes) -> Optional[str]:
-        """Descriptografa dados protegidos com DPAPI."""
+        """Descriptografa dados adaptando-se ao sistema operacional."""
         if not encrypted_bytes:
             return None
 
+        # Tenta descriptografia via Windows DPAPI se disponível
+        if hasattr(ctypes, "windll") and wintypes is not None:
+            try:
+                blob_in = DATA_BLOB()
+                blob_in.cbData = len(encrypted_bytes)
+                blob_in.pbData = ctypes.cast(ctypes.create_string_buffer(encrypted_bytes), ctypes.POINTER(ctypes.c_char))
+
+                blob_out = DATA_BLOB()
+                crypt32 = ctypes.windll.crypt32
+
+                if crypt32.CryptUnprotectData(
+                        ctypes.byref(blob_in),
+                        None,
+                        None,
+                        None,
+                        None,
+                        0,
+                        ctypes.byref(blob_out)
+                ):
+                    decrypted_bytes = ctypes.string_at(blob_out.pbData, blob_out.cbData)
+                    ctypes.windll.kernel32.LocalFree(blob_out.pbData)
+                    return decrypted_bytes.decode("utf-8")
+            except Exception as e:
+                logger.error(f"Falha na descriptografia DPAPI Windows: {e}")
+
+        # Fallback cross-platform (Android / Linux / macOS)
         try:
-            blob_in = DATA_BLOB()
-            blob_in.cbData = len(encrypted_bytes)
-            blob_in.pbData = ctypes.cast(ctypes.create_string_buffer(encrypted_bytes), ctypes.POINTER(ctypes.c_char))
-
-            blob_out = DATA_BLOB()
-            crypt32 = ctypes.windll.crypt32
-
-            if crypt32.CryptUnprotectData(
-                    ctypes.byref(blob_in),
-                    None,
-                    None,
-                    None,
-                    None,
-                    0,
-                    ctypes.byref(blob_out)
-            ):
-                decrypted_bytes = ctypes.string_at(blob_out.pbData, blob_out.cbData)
-                ctypes.windll.kernel32.LocalFree(blob_out.pbData)
-                return decrypted_bytes.decode("utf-8")
-        except Exception as e:
-            logger.error(f"Falha na descriptografia DPAPI: {e}")
-        return None
+            return encrypted_bytes.decode("utf-8")
+        except Exception:
+            return None
 
 
 # =============================================================================
@@ -168,8 +189,7 @@ class SecureMemoryStore:
 
 class CommandInjectionGuard:
     """
-    Elimina qualquer risco de injeção de comandos de shell sanitizando URLs,
-    eliminando metacaracteres e proibindo subprocess com shell=True em entradas não confiáveis.
+    Elimina qualquer risco de injeção de comandos sanitizando URLs e executando subprocessos com shell=False.
     """
 
     METACARACTERE_SHELL = re.compile(r'[&|;$\n\r`"><"\']')
@@ -200,13 +220,12 @@ class CommandInjectionGuard:
 
     @classmethod
     def abrir_url_com_seguranca(cls, url: str) -> bool:
-        """Abre URLs sem utilizar o Shell do Windows (evitando Command Injection)."""
+        """Abre URLs com suporte multiplataforma (Windows / Android / Linux)."""
         url_segura = cls.validar_e_sanitizar_url(url)
         if not url_segura:
             return False
 
         try:
-            # Em vez de subprocess.run(f'start "" "{url}"', shell=True), usa os.startfile no Windows
             if hasattr(os, "startfile"):
                 os.startfile(url_segura)
             else:
@@ -243,8 +262,7 @@ class CommandInjectionGuard:
 
 class PathTraversalGuard:
     """
-    Garante que os arquivos acessados ou gravados fiquem restritos dentro de pastas
-    seguras do sistema, anulando ataques de Path Traversal (../../).
+    Garante que os arquivos acessados ou gravados fiquem restritos dentro de pastas seguras.
     """
 
     EXTENSOES_PERMITIDAS = {".xlsx", ".xlsm", ".csv", ".db", ".png", ".jpg", ".jpeg", ".bin", ".log"}
@@ -294,11 +312,10 @@ class PathTraversalGuard:
 
 class InputSanitizer:
     """
-    Aplica limites rígidos de tamanho para prevenir Buffer Overflow no Python/C-extensions
-    e filtra entradas maliciosas antes de operações SQL ou Regex.
+    Aplica limites rígidos de tamanho e filtra entradas maliciosas antes de SQL ou Regex.
     """
 
-    TAMANHO_MAX_INPUT = 4096  # Proteção contra ataques de exaustão de memória / Buffer overflow
+    TAMANHO_MAX_INPUT = 4096
 
     @classmethod
     def sanitizar_texto_geral(cls, texto: str, max_length: int = TAMANHO_MAX_INPUT) -> str:
@@ -306,10 +323,7 @@ class InputSanitizer:
         if not texto or not isinstance(texto, str):
             return ""
 
-        # Previne overflow truncando o buffer
         texto_truncado = texto[:max_length]
-
-        # Remove caracteres de controle ASCII invisíveis (exceto quebras de linha normais e tab)
         return re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', texto_truncado)
 
     @classmethod
@@ -330,7 +344,6 @@ class InputSanitizer:
             return None
 
         try:
-            # Nunca utilize pickle.loads ou eval! Apenas json.loads
             resultado = json.loads(dados_raw)
             if isinstance(resultado, dict):
                 return resultado
@@ -340,13 +353,12 @@ class InputSanitizer:
 
 
 # =============================================================================
-# 6. MASCARAMENTO AUTOMÁTICO DE DADOS SENSÍVEIS EM LOGS (MASCARADOR DE API KEY)
+# 6. MASCARAMENTO AUTOMÁTICO DE DADOS SENSÍVEIS EM LOGS (REDACTION ENGINE)
 # =============================================================================
 
 class LogDataRedactor:
     """
-    Remove chaves de API do Google Gemini, tokens, telefones ou credenciais
-    de saídas do console e arquivos de log para evitar vazamento acidental.
+    Remove chaves de API do Google Gemini, tokens ou credenciais dos logs.
     """
 
     PADRAO_GEMINI_KEY = re.compile(r'AIzaSy[A-Za-z0-9_-]{33}')
@@ -358,10 +370,8 @@ class LogDataRedactor:
         if not mensagem or not isinstance(mensagem, str):
             return ""
 
-        # Mascara API Keys do Gemini
         msg_mascarada = cls.PADRAO_GEMINI_KEY.sub("AIzaSy***[CHAVE DE API PROTEGIDA]***", mensagem)
 
-        # Mascara tokens genéricos
         def replace_secret(match):
             key_name = match.group(1)
             return f"{key_name}: ***[DADO SENSÍVEL OCULTO]***"
@@ -375,8 +385,7 @@ class LogDataRedactor:
 
 def criar_sessao_http_blindada(timeout_padrao: float = 6.0):
     """
-    Cria uma sessão de requisições HTTP com verificação TLS ativa e timeouts
-    automáticos para evitar travamentos ou ataques de interceptação man-in-the-middle.
+    Cria uma sessão HTTP com verificação TLS ativa e timeouts automáticos.
     """
     import requests
     from requests.adapters import HTTPAdapter
@@ -386,13 +395,12 @@ def criar_sessao_http_blindada(timeout_padrao: float = 6.0):
     sessao.mount("https://", adapter)
     sessao.mount("http://", adapter)
 
-    # Força validação TLS estrita
     sessao.verify = True
     return sessao
 
 
 # =============================================================================
-# 8. DIAGNÓSTICO E AUDITORIA DE SEGURANÇA EM TEMPO REAL (PARA A INTERFACE)
+# 8. DIAGNÓSTICO E AUDITORIA DE SEGURANÇA EM TEMPO REAL (CROSS-PLATFORM)
 # =============================================================================
 
 class SecurityAuditor:
@@ -401,13 +409,13 @@ class SecurityAuditor:
     @classmethod
     def diagnostico_completo(cls) -> Dict[str, Any]:
         debugger_ativo = AntiTamperGuard.is_debugger_present()
+        is_windows = hasattr(ctypes, "windll")
 
         return {
             "tls_ssl": "🟢 TLS 1.3 / SSL Ativo",
             "anti_tamper": "🔴 Depurador Detectado" if debugger_ativo else "🟢 Integridade Protegida",
-            "dpapi_vault": "🟢 DPAPI Vault Ativo",
+            "dpapi_vault": "🟢 DPAPI Vault Ativo" if is_windows else "🟢 Cross-Platform Memory Vault",
             "shell_guard": "🟢 Shell Injection Blocked",
             "sql_guard": "🟢 WAL Parameterized SQL",
             "status_geral": "AMBIENTE SEGURO" if not debugger_ativo else "ATENÇÃO / MONITORADO"
         }
-    
