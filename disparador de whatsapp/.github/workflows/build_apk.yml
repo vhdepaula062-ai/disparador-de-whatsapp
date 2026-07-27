@@ -28,11 +28,13 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Instalar Flet
-        run: pip install flet
+      - name: Instalar Flet e Dependencias
+        run: pip install flet requests urllib3
 
-      - name: Preparar entrada principal para o Flet
-        run: cp main_mobile.py main.py
+      - name: Preparar entrada principal e modulos
+        run: |
+          cp main_mobile.py main.py
+          cp "disparador de whatsapp/security_guard.py" security_guard.py || true
 
       - name: Gerar APK da versao mobile
         run: flet build apk
