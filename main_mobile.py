@@ -9,7 +9,7 @@ import flet as ft
 from security_guard import InputSanitizer, LogDataRedactor, SecurityAuditor
 
 # =============================================================================
-# BANCO DE DADOS SQLITE NATIVO DO CELULAR
+# BANCO DE DADOS SQLITE NATIVO DO CELULAR (HISTÓRICO DE LEADS)
 # =============================================================================
 class MobileDatabase:
     def __init__(self, db_path: str = "historico_leads.db"):
@@ -41,7 +41,7 @@ class MobileDatabase:
 db_mobile = MobileDatabase()
 
 # =============================================================================
-# APLICAÇÃO PRINCIPAL FLET MOBILE
+# APLICAÇÃO PRINCIPAL FLET MOBILE (ENTERPRISE SUITE v3.2)
 # =============================================================================
 def main(page: ft.Page):
     page.title = "⚡ Lead Hunter Pro Mobile v3.2"
@@ -49,7 +49,7 @@ def main(page: ft.Page):
     page.padding = 12
     page.scroll = ft.ScrollMode.AUTO
 
-    # Cotação do Dólar
+    # Cotação do Dólar em Tempo Real
     cotacao_dolar = 5.08
     try:
         r_usd = requests.get("https://api.exchangerate-api.com/v4/latest/USD", timeout=3.0)
@@ -65,14 +65,14 @@ def main(page: ft.Page):
     # ABA 1: CAPTADOR DE LEADS (MAPS & WEB B2B)
     # -------------------------------------------------------------------------
     txt_termo_maps = ft.TextField(label="Termo ou Cidade (Ex: Lojas em Anapolis)", value="Lojas em Anapolis GO")
-    lv_leads_maps = ft.ListView(expand=True, spacing=8, height=300)
+    lv_leads_maps = ft.ListView(expand=True, spacing=8, height=320)
 
     def buscar_leads_maps_action(e):
         termo = txt_termo_maps.value.strip()
         if not termo:
             return
         lv_leads_maps.controls.clear()
-        lv_leads_maps.controls.append(ft.Text(f"🔎 Minerando leads B2B para '{termo}'...", color=ft.colors.AMBER_400))
+        lv_leads_maps.controls.append(ft.Text(f"🔎 Minerando leads B2B para '{termo}'...", color=ft.Colors.AMBER_400))
         page.update()
 
         try:
@@ -84,55 +84,55 @@ def main(page: ft.Page):
             lv_leads_maps.controls.clear()
 
             if not telefones:
-                lv_leads_maps.controls.append(ft.Text("ℹ️ Nenhum número novo encontrado.", color=ft.colors.GREY_400))
+                lv_leads_maps.controls.append(ft.Text("ℹ️ Nenhum número novo encontrado nesta busca.", color=ft.Colors.GREY_400))
             else:
                 for idx, tel in enumerate(list(telefones)[:15]):
                     t_limpo = InputSanitizer.sanitizar_telefone(tel)
                     if t_limpo:
                         ja_foi = db_mobile.lead_ja_abordado(t_limpo)
                         status_str = "⚠️ Já abordado" if ja_foi else "🌟 NOVO LEAD"
-                        cor_btn = ft.colors.AMBER_800 if ja_foi else ft.colors.GREEN_700
+                        cor_btn = ft.Colors.AMBER_800 if ja_foi else ft.Colors.GREEN_700
 
                         def abrir_zap(e, phone=t_limpo):
-                            db_mobile.salvar_lead("Lead Mobile", phone)
+                            db_mobile.salvar_lead("Lead Mobile B2B", phone)
                             page.launch_url(f"https://api.whatsapp.com/send?phone={phone}")
 
                         lv_leads_maps.controls.append(
                             ft.Container(
                                 content=ft.Row([
                                     ft.Column([
-                                        ft.Text(f"👤 Lead B2B #{idx+1}", weight=ft.FontWeight.BOLD, color=ft.colors.WHITE),
-                                        ft.Text(f"📞 {t_limpo} | {status_str}", size=11, color=ft.colors.AMBER_200 if ja_foi else ft.colors.GREEN_300)
+                                        ft.Text(f"👤 Lead B2B #{idx+1}", weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                                        ft.Text(f"📞 {t_limpo} | {status_str}", size=11, color=ft.Colors.AMBER_200 if ja_foi else ft.Colors.GREEN_300)
                                     ], expand=True),
-                                    ft.ElevatedButton("🚀 Abrir Zap", icon=ft.icons.SEND, bgcolor=cor_btn, color=ft.colors.WHITE, on_click=abrir_zap)
+                                    ft.ElevatedButton("🚀 Abrir Zap", icon=ft.Icons.SEND, bgcolor=cor_btn, color=ft.Colors.WHITE, on_click=abrir_zap)
                                 ]),
-                                bgcolor=ft.colors.BLUE_GREY_900, padding=8, border_radius=8
+                                bgcolor=ft.Colors.BLUE_GREY_900, padding=8, border_radius=8
                             )
                         )
         except Exception as err:
             lv_leads_maps.controls.clear()
-            lv_leads_maps.controls.append(ft.Text(f"✖ Erro na busca: {err}", color=ft.colors.RED_400))
+            lv_leads_maps.controls.append(ft.Text(f"✖ Erro na busca: {err}", color=ft.Colors.RED_400))
         page.update()
 
     tab_maps = ft.Column([
-        ft.Text("🛒 Captador B2B Google Maps & Web", size=16, weight=ft.FontWeight.BOLD, color=ft.colors.LIGHT_BLUE_400),
+        ft.Text("🛒 Captador B2B Google Maps & Web", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.LIGHT_BLUE_400),
         txt_termo_maps,
-        ft.ElevatedButton("🔍 Iniciar Coleta B2B", icon=ft.icons.SEARCH, bgcolor=ft.colors.BLUE_700, color=ft.colors.WHITE, on_click=buscar_leads_maps_action),
+        ft.ElevatedButton("🔍 Iniciar Coleta B2B", icon=ft.Icons.SEARCH, bgcolor=ft.Colors.BLUE_700, color=ft.Colors.WHITE, on_click=buscar_leads_maps_action),
         ft.Divider(),
         lv_leads_maps
     ])
 
     # -------------------------------------------------------------------------
-    # ABA 2: META ADS LIBRARY (ESPIONAGEM)
+    # ABA 2: META ADS LIBRARY (ESPIONAGEM DE ANÚNCIOS)
     # -------------------------------------------------------------------------
     txt_meta_ads = ft.TextField(label="Nicho Meta Ads (Ex: emagrecimento)", value="emagrecimento")
-    lv_meta_ads = ft.ListView(expand=True, spacing=8, height=300)
+    lv_meta_ads = ft.ListView(expand=True, spacing=8, height=320)
 
     def espionar_meta_ads(e):
         termo = txt_meta_ads.value.strip()
         if not termo: return
         lv_meta_ads.controls.clear()
-        lv_meta_ads.controls.append(ft.Text(f"🎯 Espionando anúncios para '{termo}'...", color=ft.colors.PURPLE_300))
+        lv_meta_ads.controls.append(ft.Text(f"🎯 Espionando anúncios para '{termo}'...", color=ft.Colors.PURPLE_300))
         page.update()
 
         try:
@@ -144,28 +144,28 @@ def main(page: ft.Page):
             lv_meta_ads.controls.clear()
 
             if not ad_ids:
-                lv_meta_ads.controls.append(ft.Text("ℹ️ Nenhum anúncio ativo retornado.", color=ft.colors.GREY_400))
+                lv_meta_ads.controls.append(ft.Text("ℹ️ Nenhum anúncio ativo retornado.", color=ft.Colors.GREY_400))
             else:
                 for idx, ad_id in enumerate(ad_ids[:10]):
                     link_ad = f"https://www.facebook.com/ads/library/?id={ad_id}"
                     lv_meta_ads.controls.append(
                         ft.Container(
                             content=ft.Column([
-                                ft.Text(f"🎯 Anúncio Escalado #{idx+1} (ID: {ad_id})", weight=ft.FontWeight.BOLD, color=ft.colors.PURPLE_200),
-                                ft.ElevatedButton("🔗 Ver Anúncio no Meta", icon=ft.icons.OPEN_IN_NEW, bgcolor=ft.colors.PURPLE_800, color=ft.colors.WHITE, on_click=lambda e, u=link_ad: page.launch_url(u))
+                                ft.Text(f"🎯 Anúncio Escalado #{idx+1} (ID: {ad_id})", weight=ft.FontWeight.BOLD, color=ft.Colors.PURPLE_200),
+                                ft.ElevatedButton("🔗 Ver Anúncio no Meta", icon=ft.Icons.OPEN_IN_NEW, bgcolor=ft.Colors.PURPLE_800, color=ft.Colors.WHITE, on_click=lambda e, u=link_ad: page.launch_url(u))
                             ]),
-                            bgcolor=ft.colors.BLUE_GREY_900, padding=8, border_radius=8
+                            bgcolor=ft.Colors.BLUE_GREY_900, padding=8, border_radius=8
                         )
                     )
         except Exception as err:
             lv_meta_ads.controls.clear()
-            lv_meta_ads.controls.append(ft.Text(f"✖ Erro na espionagem: {err}", color=ft.colors.RED_400))
+            lv_meta_ads.controls.append(ft.Text(f"✖ Erro na espionagem: {err}", color=ft.Colors.RED_400))
         page.update()
 
     tab_meta = ft.Column([
-        ft.Text("🎯 Meta Ads Library (Espionagem)", size=16, weight=ft.FontWeight.BOLD, color=ft.colors.PURPLE_300),
+        ft.Text("🎯 Meta Ads Library (Espionagem)", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.PURPLE_300),
         txt_meta_ads,
-        ft.ElevatedButton("🎯 Minerar Anúncios", icon=ft.icons.TARGET, bgcolor=ft.colors.PURPLE_700, color=ft.colors.WHITE, on_click=espionar_meta_ads),
+        ft.ElevatedButton("🎯 Minerar Anúncios", icon=ft.Icons.TARGET, bgcolor=ft.Colors.PURPLE_700, color=ft.Colors.WHITE, on_click=espionar_meta_ads),
         ft.Divider(),
         lv_meta_ads
     ])
@@ -174,13 +174,13 @@ def main(page: ft.Page):
     # ABA 3: COMPARADOR DE PREÇOS (PLATI / Z2U / SHOPEE + DÓLAR)
     # -------------------------------------------------------------------------
     txt_comparar = ft.TextField(label="Produto Digital / Licença (Ex: CapCut)", value="CapCut")
-    lv_comparar = ft.ListView(expand=True, spacing=8, height=300)
+    lv_comparar = ft.ListView(expand=True, spacing=8, height=320)
 
     def comparar_precos_action(e):
         prod = txt_comparar.value.strip()
         if not prod: return
         lv_comparar.controls.clear()
-        lv_comparar.controls.append(ft.Text(f"⚖️ Minerando ofertas... Cotação USD: R$ {cotacao_dolar:.2f}", color=ft.colors.AMBER_400))
+        lv_comparar.controls.append(ft.Text(f"⚖️ Minerando ofertas... Cotação USD: R$ {cotacao_dolar:.2f}", color=ft.Colors.AMBER_400))
         page.update()
 
         try:
@@ -200,27 +200,27 @@ def main(page: ft.Page):
                     link = f"https://shopee.com.br/product/{shopid}/{itemid}" if shopid and itemid else "https://shopee.com.br"
 
                     tag_menor = "🏆 MENOR PREÇO DO MERCADO" if idx == 0 else "🛒 Oferta Encontrada"
-                    cor_tag = ft.colors.GREEN_400 if idx == 0 else ft.colors.AMBER_300
+                    cor_tag = ft.Colors.GREEN_400 if idx == 0 else ft.Colors.AMBER_300
 
                     lv_comparar.controls.append(
                         ft.Container(
                             content=ft.Column([
-                                ft.Text(f"📦 {nome}", weight=ft.FontWeight.BOLD, color=ft.colors.WHITE),
+                                ft.Text(f"📦 {nome}", weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
                                 ft.Text(f"{tag_menor} | 💵 US$ {preco_usd:.2f} ➔ 🇧🇷 R$ {preco_brl:.2f}", color=cor_tag, weight=ft.FontWeight.BOLD, size=11),
-                                ft.ElevatedButton("🔗 Abrir Oferta", icon=ft.icons.SHOPPING_BAG, bgcolor=ft.colors.GREEN_800 if idx==0 else ft.colors.BLUE_800, color=ft.colors.WHITE, on_click=lambda e, u=link: page.launch_url(u))
+                                ft.ElevatedButton("🔗 Abrir Oferta", icon=ft.Icons.SHOPPING_BAG, bgcolor=ft.Colors.GREEN_800 if idx==0 else ft.Colors.BLUE_800, color=ft.Colors.WHITE, on_click=lambda e, u=link: page.launch_url(u))
                             ]),
-                            bgcolor=ft.colors.BLUE_GREY_900, padding=8, border_radius=8
+                            bgcolor=ft.Colors.BLUE_GREY_900, padding=8, border_radius=8
                         )
                     )
         except Exception as err:
             lv_comparar.controls.clear()
-            lv_comparar.controls.append(ft.Text(f"✖ Erro ao comparar: {err}", color=ft.colors.RED_400))
+            lv_comparar.controls.append(ft.Text(f"✖ Erro ao comparar: {err}", color=ft.Colors.RED_400))
         page.update()
 
     tab_comparar = ft.Column([
-        ft.Text(f"⚖️ Comparador de Preços (Dólar: R$ {cotacao_dolar:.2f})", size=16, weight=ft.FontWeight.BOLD, color=ft.colors.AMBER_400),
+        ft.Text(f"⚖️ Comparador de Preços (Dólar: R$ {cotacao_dolar:.2f})", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.AMBER_400),
         txt_comparar,
-        ft.ElevatedButton("🔎 Comparar Preços", icon=ft.icons.COMPARE_ARROWS, bgcolor=ft.colors.AMBER_700, color=ft.colors.WHITE, on_click=comparar_precos_action),
+        ft.ElevatedButton("🔎 Comparar Preços", icon=ft.Icons.COMPARE_ARROWS, bgcolor=ft.Colors.AMBER_700, color=ft.Colors.WHITE, on_click=comparar_precos_action),
         ft.Divider(),
         lv_comparar
     ])
@@ -229,13 +229,13 @@ def main(page: ft.Page):
     # ABA 4: LIT HUNTER (MINERAR GRUPOS PÚBLICOS DE WHATSAPP)
     # -------------------------------------------------------------------------
     txt_lit_nicho = ft.TextField(label="Nicho do Grupo (Ex: vendas e-commerce)", value="vendas e-commerce")
-    lv_lit_grupos = ft.ListView(expand=True, spacing=8, height=300)
+    lv_lit_grupos = ft.ListView(expand=True, spacing=8, height=320)
 
     def minerar_grupos_lit_action(e):
         nicho = txt_lit_nicho.value.strip()
         if not nicho: return
         lv_lit_grupos.controls.clear()
-        lv_lit_grupos.controls.append(ft.Text(f"🔥 Minerando grupos públicos para '{nicho}'...", color=ft.colors.ORANGE_400))
+        lv_lit_grupos.controls.append(ft.Text(f"🔥 Minerando grupos públicos para '{nicho}'...", color=ft.Colors.ORANGE_400))
         page.update()
 
         try:
@@ -247,42 +247,42 @@ def main(page: ft.Page):
             lv_lit_grupos.controls.clear()
 
             if not links:
-                lv_lit_grupos.controls.append(ft.Text("ℹ️ Nenhum link de grupo público localizado.", color=ft.colors.GREY_400))
+                lv_lit_grupos.controls.append(ft.Text("ℹ️ Nenhum link de grupo público localizado.", color=ft.Colors.GREY_400))
             else:
                 for idx, link_g in enumerate(list(links)[:10]):
                     lv_lit_grupos.controls.append(
                         ft.Container(
                             content=ft.Row([
                                 ft.Column([
-                                    ft.Text(f"🔥 Grupo Público #{idx+1}", weight=ft.FontWeight.BOLD, color=ft.colors.ORANGE_300),
-                                    ft.Text(f"🔗 {link_g[:35]}...", size=10, color=ft.colors.GREY_400)
+                                    ft.Text(f"🔥 Grupo Público #{idx+1}", weight=ft.FontWeight.BOLD, color=ft.Colors.ORANGE_300),
+                                    ft.Text(f"🔗 {link_g[:35]}...", size=10, color=ft.Colors.GREY_400)
                                 ], expand=True),
-                                ft.ElevatedButton("Entrar no Grupo", icon=ft.icons.GROUP_ADD, bgcolor=ft.colors.ORANGE_800, color=ft.colors.WHITE, on_click=lambda e, u=link_g: page.launch_url(u))
+                                ft.ElevatedButton("Entrar no Grupo", icon=ft.Icons.GROUP_ADD, bgcolor=ft.Colors.ORANGE_800, color=ft.Colors.WHITE, on_click=lambda e, u=link_g: page.launch_url(u))
                             ]),
-                            bgcolor=ft.colors.BLUE_GREY_900, padding=8, border_radius=8
+                            bgcolor=ft.Colors.BLUE_GREY_900, padding=8, border_radius=8
                         )
                     )
         except Exception as err:
             lv_lit_grupos.controls.clear()
-            lv_lit_grupos.controls.append(ft.Text(f"✖ Erro na mineração: {err}", color=ft.colors.RED_400))
+            lv_lit_grupos.controls.append(ft.Text(f"✖ Erro na mineração: {err}", color=ft.Colors.RED_400))
         page.update()
 
     tab_lit = ft.Column([
-        ft.Text("🔥 Lit Hunter (Aquecedor & Grupos Públicos)", size=16, weight=ft.FontWeight.BOLD, color=ft.colors.ORANGE_400),
+        ft.Text("🔥 Lit Hunter (Aquecedor & Grupos Públicos)", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.ORANGE_400),
         txt_lit_nicho,
-        ft.ElevatedButton("🔥 Minerar Grupos", icon=ft.icons.WHATSHOT, bgcolor=ft.colors.ORANGE_700, color=ft.colors.WHITE, on_click=minerar_grupos_lit_action),
+        ft.ElevatedButton("🔥 Minerar Grupos", icon=ft.Icons.WHATSHOT, bgcolor=ft.Colors.ORANGE_700, color=ft.Colors.WHITE, on_click=minerar_grupos_lit_action),
         ft.Divider(),
         lv_lit_grupos
     ])
 
     # -------------------------------------------------------------------------
-    # ABA 5: DISPARADOR WHATSAPP & IA GEMINI
+    # ABA 5: DISPARADOR WHATSAPP & IA GEMINI 2.0 FLASH
     # -------------------------------------------------------------------------
     entry_gemini_key = ft.TextField(ref=api_key_gemini, label="🔑 Chave de API Google Gemini AI", password=True, can_reveal_password=True)
     txt_tel_envio = ft.TextField(label="Número do WhatsApp (com DDD)", placeholder="5562999999999", keyboard_type=ft.KeyboardType.PHONE)
     txt_nome_empresa = ft.TextField(label="Nome da Empresa / Cliente", placeholder="Lógica Calçados")
     txt_proposta_base = ft.TextField(label="Proposta de Valor / Oferta Base", multiline=True, min_lines=2, value="Oferecer criação de sites profissionais e IA de vendas.")
-    lbl_msg_gerada = ft.Text("", size=12, color=ft.colors.GREEN_300)
+    lbl_msg_gerada = ft.Text("", size=12, color=ft.Colors.GREEN_300)
 
     def gerar_copy_gemini_action(e):
         key = api_key_gemini.current.value.strip()
@@ -323,14 +323,14 @@ def main(page: ft.Page):
         page.launch_url(f"https://api.whatsapp.com/send?phone={tel}&text={msg_enc}")
 
     tab_disparos = ft.Column([
-        ft.Text("🚀 Disparador com IA Gemini 2.0", size=16, weight=ft.FontWeight.BOLD, color=ft.colors.GREEN_400),
+        ft.Text("🚀 Disparador com IA Gemini 2.0", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_400),
         entry_gemini_key,
         txt_nome_empresa,
         txt_tel_envio,
         txt_proposta_base,
-        ft.ElevatedButton("🤖 Otimizar Mensagem com IA", icon=ft.icons.AUTO_AWESOME, bgcolor=ft.colors.PURPLE_800, color=ft.colors.WHITE, on_click=gerar_copy_gemini_action),
+        ft.ElevatedButton("🤖 Otimizar Mensagem com IA", icon=ft.Icons.AUTO_AWESOME, bgcolor=ft.Colors.PURPLE_800, color=ft.Colors.WHITE, on_click=gerar_copy_gemini_action),
         lbl_msg_gerada,
-        ft.ElevatedButton("🚀 Abrir no WhatsApp Direct", icon=ft.icons.SEND, bgcolor=ft.colors.GREEN_700, color=ft.colors.WHITE, on_click=disparar_whatsapp_final)
+        ft.ElevatedButton("🚀 Abrir no WhatsApp Direct", icon=ft.Icons.SEND, bgcolor=ft.Colors.GREEN_700, color=ft.Colors.WHITE, on_click=disparar_whatsapp_final)
     ])
 
     # MENU DE ABAS MOBILE
@@ -349,8 +349,8 @@ def main(page: ft.Page):
 
     page.add(
         ft.Row([
-            ft.Text("⚡ Lead Hunter Pro", size=18, weight=ft.FontWeight.BOLD, color=ft.colors.LIGHT_BLUE_400),
-            ft.Text("🛡️ Shield Ativo", size=11, color=ft.colors.GREEN_400)
+            ft.Text("⚡ Lead Hunter Pro", size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.LIGHT_BLUE_400),
+            ft.Text("🛡️ Shield Ativo", size=11, color=ft.Colors.GREEN_400)
         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
         ft.Divider(),
         tabs
