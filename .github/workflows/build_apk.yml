@@ -1,0 +1,48 @@
+name: Gerar APK Android
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17 JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Instalar Flet e Dependencias
+        run: pip install flet requests urllib3 certifi idna charset-normalizer
+
+      - name: Preparar entrada principal e modulos
+        run: |
+          cp main_mobile.py main.py
+          cp "disparador de whatsapp/security_guard.py" security_guard.py || true
+
+      - name: Gerar APK da versao mobile
+        run: flet build apk
+
+      - name: Fazer Upload do APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LeadHunterPro-Android.apk
+          path: build/apk/*.apk
