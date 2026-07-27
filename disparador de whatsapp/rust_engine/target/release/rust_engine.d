@@ -1,0 +1,1 @@
+C:\Users\knzao\Desktop\disparador\ de\ whatsapp\disparador\ de\ whatsapp\rust_engine\target\release\rust_engine.dll: C:\Users\knzao\Desktop\disparador\ de\ whatsapp\disparador\ de\ whatsapp\rust_engine\src\lib.rs

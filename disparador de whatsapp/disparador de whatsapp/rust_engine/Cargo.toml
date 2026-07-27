@@ -1,0 +1,22 @@
+[package]
+name = "rust_engine"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "rust_engine"
+crate-type = ["cdylib"]
+
+[dependencies]
+# abi3-py39: compila contra a Python Stable ABI (PEP 384)
+# Gera um único .pyd compatível com Python 3.9, 3.10, 3.11, 3.12, 3.13 e 3.14+
+pyo3 = { version = "0.23", features = ["extension-module", "abi3-py39"] }
+regex  = "1.11"
+rayon  = "1.10"
+
+[profile.release]
+opt-level     = 3
+lto           = true
+codegen-units = 1
+panic         = "abort"
+strip         = "symbols"
