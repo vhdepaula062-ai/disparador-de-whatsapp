@@ -1,0 +1,6 @@
+flet
+requests
+urllib3
+certifi
+idna
+charset-normalizer
