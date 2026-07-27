@@ -1,25 +1,38 @@
 name: Gerar APK Android
+
 on: [push]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: subosito/flutter-action@v2
+      - name: Checkout repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17 JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Configurar Flutter
+        uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-      - name: Setup Python
-        uses: actions/setup-python@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      - name: Install Flet
+
+      - name: Instalar Flet
         run: pip install flet
-      - name: Build APK
-        run: flet build apk
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v3
+
+      - name: Gerar APK da versao mobile (main_mobile.py)
+        run: flet build apk main_mobile.py
+
+      - name: Fazer Upload do APK
+        uses: actions/upload-artifact@v4
         with:
           name: LeadHunterPro-Android.apk
           path: build/apk/*.apk
-          
