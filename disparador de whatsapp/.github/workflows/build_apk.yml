@@ -32,11 +32,10 @@ jobs:
         run: pip install flet
 
       - name: Gerar APK da versao mobile (main_mobile.py)
-        run: flet build apk main_mobile.py
+        run: flet build apk main_mobile.py -v
 
       - name: Fazer Upload do APK
         uses: actions/upload-artifact@v4
         with:
           name: LeadHunterPro-Android.apk
           path: build/apk/*.apk
-          

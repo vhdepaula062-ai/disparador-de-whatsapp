@@ -1,0 +1,11 @@
+[tool.flet]
+app.module = "main_mobile"
+
+[project]
+name = "leadhunterpro"
+version = "3.2.0"
+dependencies = [
+    "flet",
+    "requests",
+    "urllib3"
+]
