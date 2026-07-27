@@ -31,8 +31,11 @@ jobs:
       - name: Instalar Flet
         run: pip install flet
 
-      - name: Gerar APK da versao mobile (main_mobile.py)
-        run: flet build apk main_mobile.py -v
+      - name: Preparar entrada principal para o Flet
+        run: cp main_mobile.py main.py
+
+      - name: Gerar APK da versao mobile
+        run: flet build apk
 
       - name: Fazer Upload do APK
         uses: actions/upload-artifact@v4
